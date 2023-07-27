@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.sms.dao.VipMapper">
+    <!--用于显示商品分类信息(查询视图)-->
+    <sql id="vip_Column_List">
+       p.id,
+       p.vip_discount,
+       p.vip_name,
+       p.create_date
+    </sql>
+
+    <!--用于显示商品分类信息(结果集映射)-->
+    <resultMap id="vipWithGroup" type="com.practice.sms.bean.Vip">
+        <id column="id" property="id"/>
+        <result column="vip_name" property="vipName"/>
+        <result column="vip_discount" property="vipDiscount"/>
+        <result column="create_date" property="createDate"/>
+    </resultMap>
+
+    <!--注意这里不要写; 因为要分页(select * from tb_xxx; limit 0, ? 错误了呀 ~)-->
+    <!--2021年4月25日14:46:34
+    查询后返回的商品信息集合不是按照id排序的, 考虑是连接查询的问题,
+    这里我使用order by进行排序, 问题得到解决
+    (内部原理: 是由于startPage()后的查询是分页查询, 分页需要得到全部记录数等数据信息, 这里加了分页限制解决)
+    -->
+    <select id="getAllVip" resultMap="vipWithGroup">
+        select
+        <include refid="vip_Column_List"/>
+        from tb_vip p
+        order by p.id
+    </select>
+
+<!--    &lt;!&ndash;用于搜索显示, 根据商品名称查询后显示&ndash;&gt;-->
+<!--    <select id="getProductByProductName" resultMap="productsWithGroup">-->
+<!--        select-->
+<!--        <include refid="withGroup_Column_List"/>-->
+<!--        from tb_product p-->
+<!--        left join tb_group g-->
+<!--        on g.id = p.group_id-->
+<!--        where p.product_name = #{productName}-->
+<!--    </select>-->
+
+<!--    &lt;!&ndash;用于搜索显示, 根据商品类别查询后显示某一类的所有商品的集合-->
+<!--    说明: 传入的是商品类别(group_name), 根据商品类别, 获取该类别下的所有商品集合-->
+<!--    &ndash;&gt;-->
+<!--    <select id="getProductsByProductGroup" resultMap="productInfoUseGroup">-->
+<!--        select *-->
+<!--        from tb_product-->
+<!--        where group_id = #{group_id}-->
+<!--    </select>-->
+
+<!--    &lt;!&ndash;association分步查询&ndash;&gt;-->
+<!--    <resultMap id="productInfoUseGroup" type="com.practice.sms.bean.Product">-->
+<!--        <id column="id" property="id"/>-->
+<!--        <result column="product_name" property="productName"/>-->
+<!--        <result column="yield_date" property="yieldDate"/>-->
+<!--        <result column="product_factory" property="productFactory"/>-->
+<!--        <result column="purchase_price" property="purchasePrice"/>-->
+<!--        <result column="stock" property="stock"/>-->
+<!--        <result column="sale_price" property="salePrice"/>-->
+<!--        <result column="sale_count" property="saleCount"/>-->
+
+<!--        <association property="groupId" select="com.practice.sms.dao.GroupMapper.getGroupByGroupId"-->
+<!--                     column="group_id">-->
+<!--        </association>-->
+<!--    </resultMap>-->
+
+    <!--新增会员信息
+    仅仅从一个JavaBean参数中取值, 使用vip.xxx是会报错的, 会提示没有setter/getter
+    -->
+    <insert id="addVip">
+        insert into tb_vip(vip_name, vip_discount)
+        values (#{vipName}, #{vipDiscount})
+    </insert>
+
+<!--    &lt;!&ndash;根据商品的编号获取到该商品的价格&ndash;&gt;-->
+<!--    <select id="getProductSalePriceByProductId" resultType="java.lang.Float">-->
+<!--        select sale_price-->
+<!--        from tb_product-->
+<!--        where id = #{id}-->
+<!--    </select>-->
+
+<!--    &lt;!&ndash;根据商品的编号获取到该商品(用于结算服务)&ndash;&gt;-->
+<!--    <select id="getProductByProductIdForCheckService" resultType="com.practice.sms.bean.Product">-->
+<!--        select *-->
+<!--        from tb_product-->
+<!--        where id = #{productId}-->
+<!--    </select>-->
+
+
+    <!--按照会员id删除会员-->
+    <delete id="deleteVipByVipId">
+        delete
+        from tb_vip
+        where id = #{vipId}
+    </delete>
+
+    <!--按照会员id修改会员信息-->
+    <update id="updateVipByVipId">
+        update tb_vip
+        set vip_name=#{vipName},
+            vip_discount=#{vipDiscount}
+        where id = #{id}
+    </update>
+
+    <!--根据商品id获取该商品对象-->
+    <select id="getVipByVipId" resultMap="vipWithGroup">
+        select
+        <include refid="vip_Column_List"/>
+        from tb_vip p where p.id = #{vipId}
+    </select>
+
+    <!--注意参数处理问题!!!-->
+    <!--(2021年4月30日01:34:09)用于搜索显示, 根据商品名称查询后显示 ===> PLUS-->
+    <select id="getVipByVipName" resultMap="vipWithGroup">
+        select
+        <include refid="vip_Column_List"/>
+        from tb_vip p
+        <where>
+            <if test="vipName != null and vipName != ''">
+                p.vip_name = #{vipName}
+            </if>
+        </where>
+        order by p.id
+    </select>
+
+<!--    &lt;!&ndash;更新id对应的商品库存&ndash;&gt;-->
+<!--    &lt;!&ndash;*************************AND？？？？？？？？？？？？？？？****************************&ndash;&gt;-->
+<!--    <update id="updateProductStock">-->
+<!--        UPDATE tb_product-->
+<!--        SET sale_count=sale_count + #{saleCount} and-->
+<!--                        stock=stock-#{saleCount}-->
+<!--            WHERE id = #{productId}-->
+<!--    </update>-->
+
+
+<!--    &lt;!&ndash;更新id对应的商品库存(PLUS)&ndash;&gt;-->
+<!--    <update id="updateProductStockPlus">-->
+<!--        update tb_product-->
+<!--        set sale_count = #{saleCount},-->
+<!--                       stock = #{stock}-->
+<!--        where id = #{productId}-->
+<!--    </update>-->
+
+</mapper>

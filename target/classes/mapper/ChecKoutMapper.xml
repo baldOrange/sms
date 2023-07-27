@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.sms.dao.ChecKoutMapper">
+
+    <!--查询上月交易额-->
+    <select id="getTransactionAmount" resultType="java.lang.String">
+        SELECT FORMAT(COALESCE(SUM(check_price), 0), 2) AS total_amount
+        FROM `tb_checkout`
+        WHERE `generate_time` >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
+        AND `generate_time` &lt;= LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH));
+    </select>
+
+    <!--查询上月进货费用-->
+    <select id="getPurchaseAmount" resultType="java.lang.String">
+        SELECT FORMAT(COALESCE(SUM(purchase_price), 0), 2) AS total_amount
+        FROM `tb_product`
+        WHERE `create_date` >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
+        AND `create_date` &lt;= LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH));
+    </select>
+    <!--用于条件展示销售信息-->
+    <select id="getSaleInfoByCondition" resultType="com.practice.sms.bean.to.ChecKoutSale">
+        SELECT product_id AS productId ,product_number as productNumber,check_price as checkPrice,is_vip as isVip ,generate_time as generateTime FROM tb_checkout
+        <where>
+            <if test="groupId != null">
+                product_id IN
+                (SELECT id FROM tb_product WHERE group_id = #{groupId})
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND generate_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND generate_time &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+
+
+
+    <!--新增商品信息
+        仅仅从一个JavaBean参数中取值, 使用product.xxx是会报错的, 会提示没有setter/getter
+    -->
+    <insert id="addProductSale">
+        insert into tb_checkout(product_id, product_name, group_id,
+                                purchase_price, product_number, check_price,
+                                is_vip,generate_time)
+        values (#{productId}, #{product.productName}, #{product.groupId}, #{product.purchasePrice},
+                #{productNumber}, #{checkPrice},
+                #{isVip}, #{generateTime})
+    </insert>
+
+
+
+</mapper>
